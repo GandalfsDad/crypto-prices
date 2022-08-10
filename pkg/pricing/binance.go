@@ -1,31 +1,52 @@
 package pricing
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
-	"strings"
 )
 
-type bnbAvgPriceGetter struct{}
+type BnbAvgPriceGetter struct{}
+
+type BnBAvgReturn struct {
+	Mins  int32  `json: "mins"`
+	Price string `json: "price"`
+}
 
 var bnbAvgPriceAddress = "https://api.binance.com/api/v3/avgPrice?symbol="
 
-func (bap bnbAvgPriceGetter) getPrice(s string) float64 {
-	resp, err := http.Get(bnbAvgPriceAddress + s)
+func (bap BnbAvgPriceGetter) GetPrice(s string) float64 {
+	r, err := http.Get(bnbAvgPriceAddress + s)
 
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("Error Getting Response:", err)
+		os.Exit(1)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	b, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
-		fmt.Println("Errors:", err)
+		fmt.Println("Error Reading Body:", err)
+		os.Exit(1)
 	}
 
-	conv, err := strconv.ParseFloat(strings.Split(strings.Split(string(body), ",")[1], ":")[1], 64)
+	data := BnBAvgReturn{}
 
-	return conv
+	err = json.Unmarshal(b, &data)
+
+	if err != nil {
+		fmt.Println("Error with response format:", err)
+	}
+
+	p, err := strconv.ParseFloat(data.Price, 64)
+
+	if err != nil {
+		fmt.Println("Error Converting:", err)
+		os.Exit(1)
+	}
+
+	return p
 }
